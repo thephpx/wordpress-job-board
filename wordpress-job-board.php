@@ -1,4 +1,4 @@
-<?php
+<?php defined( 'ABSPATH' ) or die( 'No direct access allowed' );
 /*
 Plugin Name: WordPress Job Board
 Plugin URI: https://thephpx.wordpress.org/plugins/wordpress-job-board/
@@ -8,3 +8,5 @@ Author: Faisal Ahmed
 Author URI: http://www.faisalbd.com
 Text Domain: wordpress-job-board
 */
+
+require_once('vendor/autoload.php');
