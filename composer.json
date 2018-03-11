@@ -1,0 +1,13 @@
+{
+    "name": "thephpx/wordpress-job-board",
+    "description": "Free Job Board For Wordpress",
+    "type": "wordpress-project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Faisal Ahmed",
+            "email": "thephpx@gmail.com"
+        }
+    ],
+    "require": {}
+}
