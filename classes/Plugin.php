@@ -40,6 +40,8 @@ class Plugin{
 		$this->register_taxonomy_applicationstateus();
 		add_shortcode( 'job_list', array( $this, 'shortcode_job_list' ) );
 		add_shortcode( 'job_detail', array( $this, 'shortcode_job_detail' ) );
+		add_action( 'post_edit_form_tag', array($this, 'update_edit_form') );
+		add_action( 'save_post', array($this, 'save_job_post_meta'), 1, 2 );
   }
 	
 	public function activate(){
@@ -52,7 +54,6 @@ class Plugin{
 	public function shortcode_job_list()
 	{	
 		$jobs = $this->query_jobs($_GET);	
-		//print '<pre>'; print_r($jobs->posts);exit;
 		return $this->render('job_list', array('jobs'=>$jobs->posts));
 	}
 	
@@ -152,15 +153,24 @@ class Plugin{
 		
 		$job_salary = get_post_meta( get_the_ID(), 'job_salary', true );
 		$job_deadline = get_post_meta( get_the_ID(), 'job_deadline', true );
-		$job_attachment = get_post_meta( get_the_ID(), 'job_attachment', true );
+		print $job_attachment = get_post_meta( get_the_ID(), 'job_attachment', true );
 		$job_logo = get_post_meta( get_the_ID(), 'job_logo', true );
 		
 		print '<p><label>Salary</label><input type="text" name="job_salary" value="' . esc_attr( $job_salary )  . '" class="widefat"></p>';
-		print '<p><label>Deadline</label><input type="date" id="datepicker" name="job_deadline" value="' . esc_attr( $job_deadline )  . '" class="widefat"></p>';
-		print '<p><label>Attachment</label><input type="file" name="job_attachment" value="' . esc_attr( $job_attachment )  . '" class="widefat"></p>';
-		print '<p><label>Company Logo</label><input type="file" name="job_logo" value="' . esc_attr( $job_logo )  . '" class="widefat"></p>';
-		
+		print '<p><label>Deadline</label><input type="date" id="datepicker" name="job_deadline" value="' . esc_attr( $job_deadline )  . '" class="widefat"/></p>';
+		print '<p><label>Attachment</label><input type="file" name="job_attachment" class="widefat"></p>';
+		if(!empty($job_attachment)){
+			print '<p><a href="'.$job_attachment.'">Download Attachment</a></p>';
+		}
+		print '<p><label>Company Logo</label><input type="file" name="job_logo" class="widefat"></p>';
+		if(!empty($job_logo)){
+			print '<p><img src="'.$job_logo.'" alt="" width="150px"/></p>';
+		}		
 	}
+	
+	function update_edit_form() {
+    echo ' enctype="multipart/form-data"';
+	}	
 	
 	public function add_application_meta_box()
 	{
@@ -178,6 +188,73 @@ class Plugin{
 		
 	}
 
+	// ref : https://wptheming.com/2010/08/custom-metabox-for-post-type/
+	function save_job_post_meta( $post_id, $post ) {
+		//first we prevent it from doing autosaves
+    if(defined('DOING_AUTOSAVE') && DOING_AUTOSAVE):
+        return;
+    endif;
+    if(defined('DOING_AJAX') && DOING_AJAX):
+        return;
+    endif;
+    //we check to see if the current user has privileges to edit the post
+    if(!current_user_can('edit_posts', $post_id)):
+        return;
+    endif;
+
+		if ( ! wp_verify_nonce( $_POST['application_fields'], basename(APPL_PLUGINFILE) ) ) {
+			return $post_id;
+		}
+
+		$events_meta['job_salary'] = esc_textarea( $_POST['job_salary'] );
+		$events_meta['job_deadline'] = esc_textarea( $_POST['job_deadline'] );
+		
+		if(isset($_FILES['job_attachment']))
+		{
+			$uploadedfile = $_FILES['job_attachment'];
+			$upload_overrides = array( 'test_form' => false );
+			$movefile = wp_handle_upload( $uploadedfile,  $upload_overrides);
+
+			if ( $movefile && ! isset( $movefile['error'] ) ) {
+				$events_meta['job_attachment'] = $movefile['url'];
+			}else{
+				print $movefile['error'];
+			}
+		}
+		
+		if(isset($_FILES['job_logo']))
+		{
+			$uploadedfile = $_FILES['job_logo'];
+			$upload_overrides = array( 'test_form' => false );
+			$movefile = wp_handle_upload( $uploadedfile,  $upload_overrides);
+
+			if ( $movefile && ! isset( $movefile['error'] ) ) {
+
+				$events_meta['job_logo'] = $movefile['url'];
+			}else{
+				print $movefile['error'];
+			}
+		}
+
+		foreach ( $events_meta as $key => $value ) :
+
+			if ( 'revision' === $post->post_type ) {
+				return;
+			}
+			if ( get_post_meta( $post_id, $key, false ) ) {
+
+				update_post_meta( $post_id, $key, $value );
+			} else {
+
+				add_post_meta( $post_id, $key, $value);
+			}
+			if ( ! $value ) {
+
+				delete_post_meta( $post_id, $key );
+			}
+		endforeach;
+	}
+	
 	private function register_taxonomy_jobtype()
 	{
 		$labels = array(
