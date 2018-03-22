@@ -25,5 +25,6 @@ use App\Plugin as Application;
 $plugin = Application::getInstance();
 $plugin->setDB($wpdb);
 $plugin->initialize();
+$plugin->setAction('job_post_action','job_post_action_do');
 register_activation_hook(__FILE__, array($plugin, 'activate'));
 register_deactivation_hook(__FILE__, array($plugin, 'deactivate'));

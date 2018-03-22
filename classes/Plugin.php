@@ -5,6 +5,7 @@ namespace App;
 class Plugin{
   
   private static $instance;
+	private $actions = array();
 	private $wpdb;
   
   private function __construct()
@@ -40,8 +41,18 @@ class Plugin{
 		$this->register_taxonomy_applicationstateus();
 		add_shortcode( 'job_list', array( $this, 'shortcode_job_list' ) );
 		add_shortcode( 'job_detail', array( $this, 'shortcode_job_detail' ) );
+		add_shortcode( 'job_post', array( $this, 'shortcode_job_post' ) );
 		add_action( 'post_edit_form_tag', array($this, 'update_edit_form') );
 		add_action( 'save_post', array($this, 'save_job_post_meta'), 1, 2 );
+		
+		if(is_array($this->actions) AND sizeof($this->actions))
+		{
+			foreach($this->actions as $zcbs_action)
+			{
+				add_action('admin_post_'.$zcbs_action['key'], array($this, $zcbs_action['value']));
+				add_action('admin_post_nopriv_'.$zcbs_action['key'], array($this, $zcbs_action['value']));
+			}
+		}
   }
 	
 	public function activate(){
@@ -49,6 +60,95 @@ class Plugin{
 	}
 	
 	public function deactivate(){
+	}	
+
+	public function setAction($key,$value)
+	{
+		$this->actions[] = array('key'=>$key,'value'=>$value);
+	}
+	
+	public function shortcode_job_post()
+	{			 
+		return $this->render('job_post', array());
+	}
+	
+	public function job_post_action_do()
+	{		
+		if(isset($_POST['job_post_nonce']) AND wp_verify_nonce( $_POST['job_post_nonce'], basename(APPL_PLUGINFILE) ))
+		{
+			$job_meta = array();			
+			$job_meta['job_salary'] = $_POST['job_salary'];
+			$job_meta['job_deadline'] = $_POST['job_deadline'];
+			
+			$post_array = array();
+			$post_array['post_title'] = $_POST['job_title'];
+			$post_array['post_content'] = $_POST['job_description'];
+			$post_array['post_status'] = 'draft';
+			$post_array['post_type'] = 'job';
+						
+			$new_job_post = wp_insert_post($post_array);
+						
+			if(!is_wp_error($new_job_post)){				
+				$post_id = $new_job_post;
+				
+				wp_set_object_terms( $post_id, $_POST['job_type'], 'job_type');
+				
+				if(isset($_FILES['job_attachment']))
+				{
+					$uploadedfile = $_FILES['job_attachment'];
+					$upload_overrides = array( 'test_form' => false );
+					$movefile = wp_handle_upload( $uploadedfile,  $upload_overrides);
+
+					if ( $movefile && ! isset( $movefile['error'] ) ) {
+						$job_meta['job_attachment'] = $movefile['url'];
+					}else{
+						print $movefile['error'];
+					}
+				}
+
+				if(isset($_FILES['job_logo']))
+				{
+					$uploadedfile = $_FILES['job_logo'];
+					$upload_overrides = array( 'test_form' => false );
+					$movefile = wp_handle_upload( $uploadedfile,  $upload_overrides);
+
+					if ( $movefile && ! isset( $movefile['error'] ) ) {
+
+						$job_meta['job_logo'] = $movefile['url'];
+					}else{
+						print $movefile['error'];
+					}
+				}
+
+				foreach ( $job_meta as $key => $value ) :
+					if ( 'revision' === $post->post_type ) {
+						return;
+					}
+					if ( get_post_meta( $post_id, $key, false ) ) {
+
+						update_post_meta( $post_id, $key, $value );
+					} else {
+
+						add_post_meta( $post_id, $key, $value);
+					}
+					if ( ! $value ) {
+
+						delete_post_meta( $post_id, $key );
+					}
+				endforeach;
+				
+				$redirect_to = !empty( $_POST['redirect_to'] ) ? $_POST['redirect_to'] : site_url('/job-thankyou');
+				wp_safe_redirect( $redirect_to );
+				exit();
+				
+			} else {
+				print $new_job_post->get_error_message();
+			}
+		}		
+				
+		$redirect_to = !empty( $_POST['redirect_to'] ) ? $_POST['redirect_to'] : site_url('/job-sorry');
+		wp_safe_redirect( $redirect_to );
+		exit();
 	}
 	
 	public function shortcode_job_list()
@@ -160,7 +260,7 @@ class Plugin{
 		print '<p><label>Deadline</label><input type="date" id="datepicker" name="job_deadline" value="' . esc_attr( $job_deadline )  . '" class="widefat"/></p>';
 		print '<p><label>Attachment</label><input type="file" name="job_attachment" class="widefat"></p>';
 		if(!empty($job_attachment)){
-			print '<p><a href="'.$job_attachment.'">Download Attachment</a></p>';
+			print '<p><a href="'.$job_attachment.'" target="_blank">Download Attachment</a></p>';
 		}
 		print '<p><label>Company Logo</label><input type="file" name="job_logo" class="widefat"></p>';
 		if(!empty($job_logo)){
