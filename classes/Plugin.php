@@ -56,6 +56,39 @@ class Plugin{
   }
 	
 	public function activate(){
+		
+		$page = array();
+		$page['post_type'] = 'page';
+		$page['post_title'] = 'Job List';
+		$page['post_content'] = '[job_list]';
+		$page['post_name'] = 'job-list';
+		$page['post_status'] = 'publish';
+		if(\get_page_by_path($page['post_name']) === false){
+		$outcome = \wp_insert_post($page);
+		}
+		
+		$page = array();
+		$page['post_type'] = 'page';
+		$page['post_title'] = 'Job Detail';
+		$page['post_content'] = '[job_detail]';
+		$page['post_name'] = 'job-detail';
+		$page['post_status'] = 'publish';		
+		
+		if(\get_page_by_path($page['post_name']) === false){
+			$outcome = \wp_insert_post($page);
+		}
+		
+		$page = array();
+		$page['post_type'] = 'page';
+		$page['post_title'] = 'Job Post';
+		$page['post_content'] = '[job_post]';
+		$page['post_name'] = 'job-post';
+		$page['post_status'] = 'publish';		
+		
+		if(\get_page_by_path($page['post_name']) === false){
+			$outcome = \wp_insert_post($page);
+		}
+		
 		flush_rewrite_rules();
 	}
 	
