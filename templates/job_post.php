@@ -3,11 +3,11 @@
   <?php wp_nonce_field( basename( APPL_PLUGINFILE ), 'job_post_nonce' ); ?>
   <p>
     <label>Job Title</label>
-    <input type="text" name="job_title"/>
+    <input type="text" name="job_title" required="true"/>
   </p>
   <p>
     <label>Job Description</label>
-    <textarea name="job_description"></textarea>
+    <textarea name="job_description" required="true"></textarea>
   </p>
   <p>
     <label>Type</label>

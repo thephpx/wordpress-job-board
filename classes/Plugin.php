@@ -72,9 +72,26 @@ class Plugin{
 		return $this->render('job_post', array());
 	}
 	
+	public function job_post_validate($postdata=array())
+	{
+		if(isset($postdata['job_title']) AND empty($postdata['job_title']))
+		{
+			return new \WP_Error('validation',__('Job title can not be empty'));
+		}
+		
+		if(isset($postdata['job_description']) AND empty($postdata['job_description']))
+		{
+			return new \WP_Error('validation',__('Job title can not be empty'));
+		}
+		
+		return true;
+	}
+	
 	public function job_post_action_do()
 	{		
-		if(isset($_POST['job_post_nonce']) AND wp_verify_nonce( $_POST['job_post_nonce'], basename(APPL_PLUGINFILE) ))
+		$validate = $this->job_post_validate($_POST);
+		
+		if(!is_wp_error($validate) AND isset($_POST['job_post_nonce']) AND wp_verify_nonce( $_POST['job_post_nonce'], basename(APPL_PLUGINFILE) ))
 		{
 			$job_meta = array();			
 			$job_meta['job_salary'] = $_POST['job_salary'];
@@ -142,13 +159,18 @@ class Plugin{
 				exit();
 				
 			} else {
-				print $new_job_post->get_error_message();
+				wp_die($new_job_post->get_error_message());
 			}
 		}		
-				
-		$redirect_to = !empty( $_POST['redirect_to'] ) ? $_POST['redirect_to'] : site_url('/job-sorry');
-		wp_safe_redirect( $redirect_to );
-		exit();
+		
+		if(is_wp_error($validate))
+		{
+			wp_die($validate->get_error_message());
+		}else{		
+			$redirect_to = !empty( $_POST['redirect_to'] ) ? $_POST['redirect_to'] : site_url('/job-sorry');
+			wp_safe_redirect( $redirect_to );
+			exit();			
+		}
 	}
 	
 	public function shortcode_job_list()
